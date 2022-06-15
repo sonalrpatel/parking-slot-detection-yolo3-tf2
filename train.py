@@ -115,14 +115,16 @@ if __name__ == "__main__":
     train_data_path         = 'model_data/demo/train/'
     # val_annotation_path     = '2007_val.txt'
     val_split               = 0.2
-
     #----------------------------------------------------#
     #   获取classes和anchor
     #----------------------------------------------------#
     class_names, num_classes = get_classes(classes_path)
     anchors, num_anchors     = get_anchors(anchors_path)
     ignore_thresh            = 0.5
-
+    #----------------------------------------------------#
+    #   model log path
+    #----------------------------------------------------#
+    log_path = 'logs'
     #------------------------------------------------------#
     #   创建yolo模型
     #------------------------------------------------------#
@@ -205,6 +207,9 @@ if __name__ == "__main__":
             callbacks           = [logging, checkpoint, reduce_lr, early_stopping, loss_history]
         )
 
+        model.save_weights(log_path + 'trained_weights_stage_1.h5')
+
+    # Unfreeze
     if Freeze_Train:
         for i in range(freeze_layers): model_body.layers[i].trainable = True
 
@@ -238,3 +243,5 @@ if __name__ == "__main__":
             workers             = num_workers,
             callbacks           = [logging, checkpoint, reduce_lr, early_stopping, loss_history]
         )
+
+        model.save_weights(log_path + 'trained_weights_final.h5')
