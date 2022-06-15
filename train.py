@@ -124,7 +124,7 @@ if __name__ == "__main__":
     #----------------------------------------------------#
     #   model log path
     #----------------------------------------------------#
-    log_path = 'logs'
+    log_path = 'logs/'
     #------------------------------------------------------#
     #   创建yolo模型
     #------------------------------------------------------#
@@ -193,7 +193,7 @@ if __name__ == "__main__":
 
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
 
-        model.compile(optimizer=Adam(lr = lr), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
+        model.compile(optimizer=Adam(lr = lr, epsilon=1e-8), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
 
         model.fit_generator(
             generator           = train_dataloader,
@@ -230,7 +230,7 @@ if __name__ == "__main__":
 
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
 
-        model.compile(optimizer=Adam(lr = lr), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
+        model.compile(optimizer=Adam(lr = lr, epsilon=1e-8), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
 
         model.fit_generator(
             generator           = train_dataloader,
