@@ -75,14 +75,18 @@ def yolo_body(input_shape, anchors_mask, num_classes):
 #---------------------------------------------------#
 #   Construct model
 #---------------------------------------------------#
-def get_train_model(model_body, input_shape, num_classes, anchors, anchors_mask):
-    y_true = [Input(shape = (input_shape[0] // {0:32, 1:16, 2:8}[l], input_shape[1] // {0:32, 1:16, 2:8}[l], \
-                                len(anchors_mask[l]), num_classes + 5)) for l in range(len(anchors_mask))]
+def get_train_model(model_body, input_shape, num_classes, anchors, anchors_mask, ignore_thresh):
+    y_true = [Input(shape = (input_shape[0] // {0:32, 1:16, 2:8}[l], input_shape[1] // {0:32, 1:16, 2:8}[l],
+                             len(anchors_mask[l]), num_classes + 5)) for l in range(len(anchors_mask))]
     model_loss  = Lambda(
         yolo_loss, 
         output_shape    = (1, ), 
         name            = 'yolo_loss', 
-        arguments       = {'input_shape' : input_shape, 'anchors' : anchors, 'anchors_mask' : anchors_mask, 'num_classes' : num_classes}
+        arguments       = {'input_shape' : input_shape,
+                           'anchors' : anchors,
+                           'anchors_mask' : anchors_mask,
+                           'num_classes' : num_classes,
+                           'ignore_thresh' : ignore_thresh}
     )([*model_body.output, *y_true])
     model       = Model([model_body.input, *y_true], model_loss)
     return model

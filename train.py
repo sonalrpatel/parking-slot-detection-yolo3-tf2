@@ -1,5 +1,7 @@
 from functools import partial
 
+import os
+import random
 import tensorflow as tf
 
 print(tf.__version__)
@@ -13,9 +15,10 @@ from utils.dataloader import YoloDatasets
 from utils.utils import get_anchors, get_classes
 from utils.utils_fit import fit_one_epoch
 
-gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
-for gpu in gpus:
-    tf.config.experimental.set_memory_growth(gpu, True)
+seed_value = 121
+random.seed(seed_value)
+tf.random.set_seed(seed_value)
+os.environ['PYTHONHASHSEED'] = str(seed_value)
     
 '''
 训练自己的目标检测模型一定需要注意以下几点：
@@ -39,14 +42,10 @@ for gpu in gpus:
    这些都是经验上，只能靠各位同学多查询资料和自己试试了。
 '''  
 if __name__ == "__main__":
-    #----------------------------------------------------#
-    #   是否使用eager模式训练
-    #----------------------------------------------------#
-    eager           = False
     #--------------------------------------------------------#
     #   训练前一定要修改classes_path，使其对应自己的数据集
     #--------------------------------------------------------#
-    classes_path    = 'model_data/voc_classes.txt'
+    classes_path    = 'model_data/ps_classes.txt'
     #---------------------------------------------------------------------#
     #   anchors_path代表先验框对应的txt文件，一般不修改。
     #   anchors_mask用于帮助代码找到对应的先验框，一般不修改。
@@ -70,12 +69,11 @@ if __name__ == "__main__":
     #   网络一般不从0开始训练，至少会使用主干部分的权值，有些论文提到可以不用预训练，主要原因是他们 数据集较大 且 调参能力优秀。
     #   如果一定要训练网络的主干部分，可以了解imagenet数据集，首先训练分类模型，分类模型的 主干部分 和该模型通用，基于此进行训练。
     #----------------------------------------------------------------------------------------------------------------------------#
-    model_path      = 'model_data/yolo_weights.h5'
+    model_path          = 'model_data/yolo_weights.h5'
     #------------------------------------------------------#
     #   输入的shape大小，一定要是32的倍数
     #------------------------------------------------------#
-    input_shape     = [416, 416]
-    
+    input_shape         = [416, 416]
     #----------------------------------------------------#
     #   训练分为两个阶段，分别是冻结阶段和解冻阶段。
     #   显存不足与数据集大小无关，提示显存不足请调小batch_size。
@@ -87,16 +85,16 @@ if __name__ == "__main__":
     #   占用的显存较小，仅对网络进行微调
     #----------------------------------------------------#
     Init_Epoch          = 0
-    Freeze_Epoch        = 50
-    Freeze_batch_size   = 8
+    Freeze_Epoch        = 20
+    Freeze_batch_size   = 32
     Freeze_lr           = 1e-3
     #----------------------------------------------------#
     #   解冻阶段训练参数
     #   此时模型的主干不被冻结了，特征提取网络会发生改变
     #   占用的显存较大，网络所有的参数都会发生改变
     #----------------------------------------------------#
-    UnFreeze_Epoch      = 100
-    Unfreeze_batch_size = 4
+    UnFreeze_Epoch      = 50
+    Unfreeze_batch_size = 16
     Unfreeze_lr         = 1e-4
     #------------------------------------------------------#
     #   是否进行冻结训练，默认先冻结主干训练后解冻训练。
@@ -113,14 +111,17 @@ if __name__ == "__main__":
     #----------------------------------------------------#
     #   获得图片路径和标签
     #----------------------------------------------------#
-    train_annotation_path   = '2007_train.txt'
-    val_annotation_path     = '2007_val.txt'
+    train_annotation_path   = 'model_data/demo_annotations.txt'
+    train_data_path         = 'model_data/demo/train/'
+    # val_annotation_path     = '2007_val.txt'
+    val_split               = 0.2
 
     #----------------------------------------------------#
     #   获取classes和anchor
     #----------------------------------------------------#
     class_names, num_classes = get_classes(classes_path)
     anchors, num_anchors     = get_anchors(anchors_path)
+    ignore_thresh            = 0.5
 
     #------------------------------------------------------#
     #   创建yolo模型
@@ -133,8 +134,7 @@ if __name__ == "__main__":
         print('Load weights {}.'.format(model_path))
         model_body.load_weights(model_path, by_name=True, skip_mismatch=True)
 
-    if not eager:
-        model = get_train_model(model_body, input_shape, num_classes, anchors, anchors_mask)
+        model   = get_train_model(model_body, input_shape, num_classes, anchors, anchors_mask, ignore_thresh)
     #-------------------------------------------------------------------------------#
     #   训练参数的设置
     #   logging表示tensorboard的保存地址
@@ -143,8 +143,9 @@ if __name__ == "__main__":
     #   early_stopping用于设定早停，val_loss多次不下降自动结束训练，表示模型基本收敛
     #-------------------------------------------------------------------------------#
     logging         = TensorBoard(log_dir = 'logs/')
-    checkpoint      = ModelCheckpoint('logs/ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5', monitor = 'val_loss', save_weights_only = True, save_best_only = False, period = 1)
-    reduce_lr       = ExponentDecayScheduler(decay_rate = 0.94, verbose = 1)
+    checkpoint      = ModelCheckpoint('logs/ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
+                                      monitor = 'val_loss', save_weights_only = True, save_best_only = False, period = 1)
+    reduce_lr       = ExponentDecayScheduler(decay_rate = 0.98, verbose = 1)
     early_stopping  = EarlyStopping(monitor='val_loss', min_delta = 0, patience = 10, verbose = 1)
     loss_history    = LossHistory('logs/')
 
@@ -153,8 +154,10 @@ if __name__ == "__main__":
     #---------------------------#
     with open(train_annotation_path) as f:
         train_lines = f.readlines()
-    with open(val_annotation_path) as f:
-        val_lines   = f.readlines()
+
+    train_lines = [train_data_path + line for line in train_lines]
+    val_lines = random.sample(train_lines, int(len(train_lines) * val_split))
+    train_lines = [line for line in train_lines if line not in val_lines]
     num_train   = len(train_lines)
     num_val     = len(val_lines)
 
@@ -187,36 +190,20 @@ if __name__ == "__main__":
         val_dataloader      = YoloDatasets(val_lines, input_shape, anchors, batch_size, num_classes, anchors_mask, train = False)
 
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
-        if eager:
-            gen     = tf.data.Dataset.from_generator(partial(train_dataloader.generate), (tf.float32, tf.float32, tf.float32, tf.float32))
-            gen_val = tf.data.Dataset.from_generator(partial(val_dataloader.generate), (tf.float32, tf.float32, tf.float32, tf.float32))
 
-            gen     = gen.shuffle(buffer_size = batch_size).prefetch(buffer_size = batch_size)
-            gen_val = gen_val.shuffle(buffer_size = batch_size).prefetch(buffer_size = batch_size)
+        model.compile(optimizer=Adam(lr = lr), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
 
-            lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-                initial_learning_rate = lr, decay_steps = epoch_step, decay_rate=0.94, staircase=True)
-            
-            optimizer = Adam(learning_rate = lr_schedule)
-
-            for epoch in range(start_epoch, end_epoch):
-                fit_one_epoch(model_body, loss_history, optimizer, epoch, epoch_step, epoch_step_val, gen, gen_val, 
-                            end_epoch, input_shape, anchors, anchors_mask, num_classes)
-
-        else:
-            model.compile(optimizer=Adam(lr = lr), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
-
-            model.fit_generator(
-                generator           = train_dataloader,
-                steps_per_epoch     = epoch_step,
-                validation_data     = val_dataloader,
-                validation_steps    = epoch_step_val,
-                epochs              = end_epoch,
-                initial_epoch       = start_epoch,
-                use_multiprocessing = True if num_workers > 1 else False,
-                workers             = num_workers,
-                callbacks           = [logging, checkpoint, reduce_lr, early_stopping, loss_history]
-            )
+        model.fit_generator(
+            generator           = train_dataloader,
+            steps_per_epoch     = epoch_step,
+            validation_data     = val_dataloader,
+            validation_steps    = epoch_step_val,
+            epochs              = end_epoch,
+            initial_epoch       = start_epoch,
+            use_multiprocessing = True if num_workers > 1 else False,
+            workers             = num_workers,
+            callbacks           = [logging, checkpoint, reduce_lr, early_stopping, loss_history]
+        )
 
     if Freeze_Train:
         for i in range(freeze_layers): model_body.layers[i].trainable = True
@@ -237,33 +224,17 @@ if __name__ == "__main__":
         val_dataloader      = YoloDatasets(val_lines, input_shape, anchors, batch_size, num_classes, anchors_mask, train = False)
 
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
-        if eager:
-            gen     = tf.data.Dataset.from_generator(partial(train_dataloader.generate), (tf.float32, tf.float32, tf.float32, tf.float32))
-            gen_val = tf.data.Dataset.from_generator(partial(val_dataloader.generate), (tf.float32, tf.float32, tf.float32, tf.float32))
 
-            gen     = gen.shuffle(buffer_size = batch_size).prefetch(buffer_size = batch_size)
-            gen_val = gen_val.shuffle(buffer_size = batch_size).prefetch(buffer_size = batch_size)
+        model.compile(optimizer=Adam(lr = lr), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
 
-            lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-                initial_learning_rate = lr, decay_steps = epoch_step, decay_rate=0.94, staircase=True)
-            
-            optimizer = Adam(learning_rate = lr_schedule)
-
-            for epoch in range(start_epoch, end_epoch):
-                fit_one_epoch(model_body, loss_history, optimizer, epoch, epoch_step, epoch_step_val, gen, gen_val, 
-                            end_epoch, input_shape, anchors, anchors_mask, num_classes)
-
-        else:
-            model.compile(optimizer=Adam(lr = lr), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
-
-            model.fit_generator(
-                generator           = train_dataloader,
-                steps_per_epoch     = epoch_step,
-                validation_data     = val_dataloader,
-                validation_steps    = epoch_step_val,
-                epochs              = end_epoch,
-                initial_epoch       = start_epoch,
-                use_multiprocessing = True if num_workers > 1 else False,
-                workers             = num_workers,
-                callbacks           = [logging, checkpoint, reduce_lr, early_stopping, loss_history]
-            )
+        model.fit_generator(
+            generator           = train_dataloader,
+            steps_per_epoch     = epoch_step,
+            validation_data     = val_dataloader,
+            validation_steps    = epoch_step_val,
+            epochs              = end_epoch,
+            initial_epoch       = start_epoch,
+            use_multiprocessing = True if num_workers > 1 else False,
+            workers             = num_workers,
+            callbacks           = [logging, checkpoint, reduce_lr, early_stopping, loss_history]
+        )
