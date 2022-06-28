@@ -16,16 +16,6 @@ from utils.utils_bbox import DecodeBox
 
 class YOLO(object):
     _defaults = {
-        #--------------------------------------------------------------------------#
-        #   使用自己训练好的模型进行预测一定要修改model_path和classes_path！
-        #   model_path指向logs文件夹下的权值文件，classes_path指向model_data下的txt
-        #
-        #   训练好后logs文件夹下存在多个权值文件，选择验证集损失较低的即可。
-        #   验证集损失较低不代表mAP较高，仅代表该权值在验证集上泛化性能较好。
-        #   如果出现shape不匹配，同时要注意训练时的model_path和classes_path参数的修改
-        #--------------------------------------------------------------------------#
-        "model_path"        : 'logs/self_trained_yolo_weights.h5',
-        "classes_path"      : 'model_data/voc_classes.txt',
         #---------------------------------------------------------------------#
         #   anchors_path代表先验框对应的txt文件，一般不修改。
         #   anchors_mask用于帮助代码找到对应的先验框，一般不修改。
@@ -62,10 +52,13 @@ class YOLO(object):
     #---------------------------------------------------#
     #   初始化yolo
     #---------------------------------------------------#
-    def __init__(self, **kwargs):
+    def __init__(self, args, **kwargs):
         self.__dict__.update(self._defaults)
         for name, value in kwargs.items():
             setattr(self, name, value)
+
+        self.classes_path = args.classes_path
+        self.model_path = args.weight_path
             
         #---------------------------------------------------#
         #   获得种类和先验框的数量
