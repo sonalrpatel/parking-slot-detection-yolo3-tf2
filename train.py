@@ -125,6 +125,8 @@ if __name__ == "__main__":
     #   model log path
     #----------------------------------------------------#
     log_path = 'logs/'
+    if not os.path.exists(log_path):
+        os.makedirs(log_path)
     #------------------------------------------------------#
     #   创建yolo模型
     #------------------------------------------------------#
@@ -145,8 +147,8 @@ if __name__ == "__main__":
     #   early_stopping用于设定早停，val_loss多次不下降自动结束训练，表示模型基本收敛
     #-------------------------------------------------------------------------------#
     logging         = TensorBoard(log_dir = 'logs/')
-    checkpoint      = ModelCheckpoint('logs/ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
-                                      monitor = 'val_loss', save_weights_only = True, save_best_only = False, period = 1)
+    checkpoint      = ModelCheckpoint(log_path + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
+                                      monitor = 'val_loss', save_weights_only = True, save_best_only = False, period = 10)
     reduce_lr       = ExponentDecayScheduler(decay_rate = 0.98, verbose = 1)
     early_stopping  = EarlyStopping(monitor='val_loss', min_delta = 0, patience = 10, verbose = 1)
     loss_history    = LossHistory('logs/')
@@ -158,7 +160,7 @@ if __name__ == "__main__":
         train_lines = f.readlines()
 
     train_lines = [train_data_path + line for line in train_lines]
-    val_lines = random.sample(train_lines, int(len(train_lines) * val_split))
+    val_lines   = random.sample(train_lines, int(len(train_lines) * val_split))
     train_lines = [line for line in train_lines if line not in val_lines]
     num_train   = len(train_lines)
     num_val     = len(val_lines)
