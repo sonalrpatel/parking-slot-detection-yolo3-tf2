@@ -120,7 +120,7 @@ if __name__ == "__main__":
     #----------------------------------------------------#
     class_names, num_classes = get_classes(classes_path)
     anchors, num_anchors     = get_anchors(anchors_path)
-    ignore_thresh            = 0.5
+    ignore_thresh            = 0.7
     #----------------------------------------------------#
     #   model log path
     #----------------------------------------------------#
