@@ -10,7 +10,7 @@ from tensorflow.keras.callbacks import EarlyStopping, TensorBoard
 from tensorflow.keras.optimizers import Adam
 
 from nets.yolo import get_train_model, yolo_body
-from utils.callbacks import (ExponentDecayScheduler, LossHistory, ModelCheckpoint)
+from utils.callbacks import ExponentDecayScheduler, LossHistory, ModelCheckpoint
 from utils.dataloader import YoloDatasets
 from utils.utils import get_anchors, get_classes
 from utils.utils_fit import fit_one_epoch
@@ -139,6 +139,9 @@ if __name__ == "__main__":
         model_body.load_weights(model_path, by_name=True, skip_mismatch=True)
 
         model   = get_train_model(model_body, input_shape, num_classes, anchors, anchors_mask, ignore_thresh)
+
+        model.summary()
+
     #-------------------------------------------------------------------------------#
     #   训练参数的设置
     #   logging表示tensorboard的保存地址

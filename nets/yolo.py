@@ -1,4 +1,4 @@
-from tensorflow.keras.layers import Concatenate, Input, Lambda, UpSampling2D
+from tensorflow.keras.layers import Concatenate, Input, UpSampling2D, Lambda
 from tensorflow.keras.models import Model
 from utils.utils import compose
 

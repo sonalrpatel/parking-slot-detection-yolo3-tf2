@@ -137,8 +137,6 @@ def _main(args):
 
 
 if __name__ == '__main__':
-    # run following command (as per current folder structure) on terminal
-    # python predict2.py -w model_data/trained_weights_stage_1.h5 -c model_data/ps_classes.txt model_data/demo/train/20160725-7-331.jpg
     dictionary = {
         'weight_path': "model_data/trained_weights_stage_1.h5",
         'classes_path': "model_data/ps_classes.txt",
@@ -146,3 +144,4 @@ if __name__ == '__main__':
     }
     args = AccessDictByDot.load(dictionary)
     _main(args)
+	

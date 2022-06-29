@@ -9,8 +9,7 @@ from tensorflow.keras.layers import Input, Lambda
 from tensorflow.keras.models import Model
 
 from nets.yolo import yolo_body
-from utils.utils import (cvtColor, get_anchors, get_classes, preprocess_input,
-                         resize_image)
+from utils.utils import cvtColor, get_anchors, get_classes, preprocess_input, resize_image
 from utils.utils_bbox import DecodeBox
 
 
