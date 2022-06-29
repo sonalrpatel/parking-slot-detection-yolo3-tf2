@@ -13,12 +13,11 @@ from nets.yolo import get_train_model, yolo_body
 from utils.callbacks import ExponentDecayScheduler, LossHistory, ModelCheckpoint
 from utils.dataloader import YoloDatasets
 from utils.utils import get_anchors, get_classes
-from utils.utils_fit import fit_one_epoch
 
-seed_value = 121
-random.seed(seed_value)
-tf.random.set_seed(seed_value)
-os.environ['PYTHONHASHSEED'] = str(seed_value)
+# seed_value = 121
+# random.seed(seed_value)
+# tf.random.set_seed(seed_value)
+# os.environ['PYTHONHASHSEED'] = str(seed_value)
     
 '''
 训练自己的目标检测模型一定需要注意以下几点：
@@ -85,8 +84,8 @@ if __name__ == "__main__":
     #   占用的显存较小，仅对网络进行微调
     #----------------------------------------------------#
     Init_Epoch          = 0
-    Freeze_Epoch        = 30
-    Freeze_batch_size   = 32
+    Freeze_Epoch        = 25
+    Freeze_batch_size   = 16
     Freeze_lr           = 1e-3
     #----------------------------------------------------#
     #   解冻阶段训练参数
@@ -94,7 +93,7 @@ if __name__ == "__main__":
     #   占用的显存较大，网络所有的参数都会发生改变
     #----------------------------------------------------#
     UnFreeze_Epoch      = 50
-    Unfreeze_batch_size = 16
+    Unfreeze_batch_size = 8
     Unfreeze_lr         = 1e-4
     #------------------------------------------------------#
     #   是否进行冻结训练，默认先冻结主干训练后解冻训练。
