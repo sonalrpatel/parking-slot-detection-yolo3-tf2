@@ -45,7 +45,7 @@ def box_iou(b1, b2):
 #---------------------------------------------------#
 #   loss function
 #---------------------------------------------------#
-def yolo_loss(args, input_shape, anchors, anchors_mask, num_classes, ignore_thresh=0.5):
+def yolo_loss(args, input_shape, anchors, anchors_mask, num_classes, ignore_thresh):
     num_layers = len(anchors_mask)
     #---------------------------------------------------------------------------------------------------#
     #   split predictions and ground truth, args is list contains [*model_body.output, *y_true]

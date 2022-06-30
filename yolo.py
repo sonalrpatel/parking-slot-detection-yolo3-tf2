@@ -16,6 +16,16 @@ from utils.utils_bbox import DecodeBox
 class YOLO(object):
     _defaults = {
         #---------------------------------------------------------------------#
+        #   使用自己训练好的模型进行预测一定要修改model_path和classes_path！
+        #   model_path指向logs文件夹下的权值文件，classes_path指向model_data下的txt
+        #
+        #   训练好后logs文件夹下存在多个权值文件，选择验证集损失较低的即可。
+        #   验证集损失较低不代表mAP较高，仅代表该权值在验证集上泛化性能较好。
+        #   如果出现shape不匹配，同时要注意训练时的model_path和classes_path参数的修改
+        #---------------------------------------------------------------------#
+        "model_path"		: 'model_data/trained_weights_stage_1.h5',
+        "classes_path"		: 'model_data/ps_classes.txt',
+        #---------------------------------------------------------------------#
         #   anchors_path代表先验框对应的txt文件，一般不修改。
         #   anchors_mask用于帮助代码找到对应的先验框，一般不修改。
         #---------------------------------------------------------------------#
@@ -28,11 +38,11 @@ class YOLO(object):
         #---------------------------------------------------------------------#
         #   只有得分大于置信度的预测框会被保留下来
         #---------------------------------------------------------------------#
-        "confidence"        : 0.9,
+        "confidence"        : 0.5,
         #---------------------------------------------------------------------#
         #   非极大抑制所用到的nms_iou大小
         #---------------------------------------------------------------------#
-        "nms_iou"           : 0.5,
+        "nms_iou"           : 0.3,
         "max_boxes"         : 100,
         #---------------------------------------------------------------------#
         #   该变量用于控制是否使用letterbox_image对输入图像进行不失真的resize，
@@ -51,13 +61,10 @@ class YOLO(object):
     #---------------------------------------------------#
     #   初始化yolo
     #---------------------------------------------------#
-    def __init__(self, args, **kwargs):
+    def __init__(self, **kwargs):
         self.__dict__.update(self._defaults)
         for name, value in kwargs.items():
             setattr(self, name, value)
-
-        self.classes_path = args.classes_path
-        self.model_path = args.weight_path
             
         #---------------------------------------------------#
         #   获得种类和先验框的数量
@@ -104,7 +111,7 @@ class YOLO(object):
                 'nms_iou'           : self.nms_iou, 
                 'max_boxes'         : self.max_boxes, 
                 'letterbox_image'   : self.letterbox_image
-             }
+            }
         )(inputs)
         self.yolo_model = Model([self.yolo_model.input, self.input_image_shape], outputs)
 
@@ -135,7 +142,7 @@ class YOLO(object):
         #   将图像输入网络当中进行预测！
         #---------------------------------------------------------#
         input_image_shape = np.expand_dims(np.array([image.size[1], image.size[0]], dtype='float32'), 0)
-        out_boxes, out_scores, out_classes = self.get_pred(image_data, input_image_shape) 
+        out_boxes, out_scores, out_classes = self.yolo_model([image_data, input_image_shape])
 
         print('Found {} boxes for {}'.format(len(out_boxes), 'img'))
         #---------------------------------------------------------#

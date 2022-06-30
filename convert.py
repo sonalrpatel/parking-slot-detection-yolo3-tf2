@@ -1,6 +1,6 @@
-# =========================================================================
-# Reads Darknet config and weights and creates Keras model with TF backend.
-# =========================================================================
+"""""
+Reads Darknet config and weights and creates Keras model with TF backend.
+"""""
 
 import argparse
 import configparser
@@ -32,8 +32,8 @@ parser.add_argument(
 
 
 def unique_config_sections(config_file):
-    """
-    Convert all config sections to have unique names.
+    """Convert all config sections to have unique names.
+
     Adds unique suffixes to config sections for compatibility with configparser.
     """
     section_counters = defaultdict(int)
@@ -258,5 +258,5 @@ def _main(args):
 
 if __name__ == '__main__':
     # run following command (as per current folder structure) on terminal
-    # python convert.py model_data/ps-4.cfg model_data/yolov3.weights model_data/yolo_ps.h5
+    # python convert.py data/yolov3.cfg data/yolov3.weights data/yolov3.h5
     _main(parser.parse_args())

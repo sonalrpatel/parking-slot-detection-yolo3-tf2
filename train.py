@@ -6,10 +6,13 @@ import tensorflow as tf
 
 print(tf.__version__)
 
+from tensorflow.keras import Input, Model
+from tensorflow.keras.layers import Lambda
 from tensorflow.keras.callbacks import EarlyStopping, TensorBoard
 from tensorflow.keras.optimizers import Adam
 
-from nets.yolo import get_train_model, yolo_body
+from nets.yolo import yolo_body
+from nets.yolo_training import yolo_loss
 from utils.callbacks import ExponentDecayScheduler, LossHistory, ModelCheckpoint
 from utils.dataloader import YoloDatasets
 from utils.utils import get_anchors, get_classes
@@ -17,11 +20,6 @@ from utils.utils import get_anchors, get_classes
 gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
 for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
-
-# seed_value = 121
-# random.seed(seed_value)
-# tf.random.set_seed(seed_value)
-# os.environ['PYTHONHASHSEED'] = str(seed_value)
     
 '''
 训练自己的目标检测模型一定需要注意以下几点：
@@ -48,13 +46,13 @@ if __name__ == "__main__":
     #--------------------------------------------------------#
     #   训练前一定要修改classes_path，使其对应自己的数据集
     #--------------------------------------------------------#
-    classes_path    = 'model_data/ps_classes.txt'
+    classes_path 	    = 'model_data/ps_classes.txt'
     #---------------------------------------------------------------------#
     #   anchors_path代表先验框对应的txt文件，一般不修改。
     #   anchors_mask用于帮助代码找到对应的先验框，一般不修改。
     #---------------------------------------------------------------------#
-    anchors_path    = 'model_data/yolo_anchors.txt'
-    anchors_mask    = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
+    anchors_path        = 'model_data/yolo_anchors.txt'
+    anchors_mask        = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
     #----------------------------------------------------------------------------------------------------------------------------#
     #   权值文件的下载请看README，可以通过网盘下载。模型的 预训练权重 对不同数据集是通用的，因为特征是通用的。
     #   模型的 预训练权重 比较重要的部分是 主干特征提取网络的权值部分，用于进行特征提取。
@@ -72,11 +70,13 @@ if __name__ == "__main__":
     #   网络一般不从0开始训练，至少会使用主干部分的权值，有些论文提到可以不用预训练，主要原因是他们 数据集较大 且 调参能力优秀。
     #   如果一定要训练网络的主干部分，可以了解imagenet数据集，首先训练分类模型，分类模型的 主干部分 和该模型通用，基于此进行训练。
     #----------------------------------------------------------------------------------------------------------------------------#
-    model_path          = 'model_data/yolo_ps.h5'
+    model_path          = 'model_data/yolov3_ps.h5'
+
     #------------------------------------------------------#
     #   输入的shape大小，一定要是32的倍数
     #------------------------------------------------------#
     input_shape         = [416, 416]
+    
     #----------------------------------------------------#
     #   训练分为两个阶段，分别是冻结阶段和解冻阶段。
     #   显存不足与数据集大小无关，提示显存不足请调小batch_size。
@@ -114,15 +114,15 @@ if __name__ == "__main__":
     #----------------------------------------------------#
     #   获得图片路径和标签
     #----------------------------------------------------#
-    train_annotation_path   = 'model_data/train_annotations.txt'
-    train_data_path         = 'model_data/ps/train/'
+    train_annotation_path   = 'data/train_annotations.txt'
+    train_data_path         = 'data/ps/train/'
     val_split               = 0.2
     #----------------------------------------------------#
     #   获取classes和anchor
     #----------------------------------------------------#
-    class_names, num_classes = get_classes(classes_path)
-    anchors, num_anchors     = get_anchors(anchors_path)
-    ignore_thresh            = 0.7
+    class_names, num_classes    = get_classes(classes_path)
+    anchors, num_anchors        = get_anchors(anchors_path)
+    ignore_thresh               = 0.5
     #----------------------------------------------------#
     #   model log path
     #----------------------------------------------------#
@@ -140,9 +140,19 @@ if __name__ == "__main__":
         print('Load weights {}.'.format(model_path))
         model_body.load_weights(model_path, by_name=True, skip_mismatch=True)
 
-        model   = get_train_model(model_body, input_shape, num_classes, anchors, anchors_mask, ignore_thresh)
+    y_true = [Input(shape=(input_shape[0] // {0: 32, 1: 16, 2: 8}[l], input_shape[1] // {0: 32, 1: 16, 2: 8}[l],
+                           len(anchors_mask[l]), num_classes + 5)) for l in range(len(anchors_mask))]
+    model_loss = Lambda(
+        yolo_loss,
+        output_shape=(1,),
+        name='yolo_loss',
+        arguments={'input_shape': input_shape, 'anchors': anchors, 'anchors_mask': anchors_mask,
+                   'num_classes': num_classes, 'ignore_thresh': ignore_thresh}
+    )([*model_body.output, *y_true])
 
-        model.summary()
+    model = Model([model_body.input, *y_true], model_loss)
+
+    model.summary()
 
     #-------------------------------------------------------------------------------#
     #   训练参数的设置
@@ -154,7 +164,7 @@ if __name__ == "__main__":
     logging         = TensorBoard(log_dir = 'logs/')
     checkpoint      = ModelCheckpoint(log_path + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
                                       monitor = 'val_loss', save_weights_only = True, save_best_only = False, period = 10)
-    reduce_lr       = ExponentDecayScheduler(decay_rate = 0.98, verbose = 1)
+    reduce_lr       = ExponentDecayScheduler(decay_rate = 0.94, verbose = 1)
     early_stopping  = EarlyStopping(monitor='val_loss', min_delta = 0, patience = 10, verbose = 1)
     loss_history    = LossHistory('logs/')
 
@@ -200,7 +210,7 @@ if __name__ == "__main__":
 
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
 
-        model.compile(optimizer=Adam(lr = lr, epsilon=1e-8), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
+        model.compile(optimizer=Adam(lr = lr), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
 
         model.fit_generator(
             generator           = train_dataloader,
@@ -237,7 +247,7 @@ if __name__ == "__main__":
 
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
 
-        model.compile(optimizer=Adam(lr = lr, epsilon=1e-8), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
+        model.compile(optimizer=Adam(lr = lr), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
 
         model.fit_generator(
             generator           = train_dataloader,
