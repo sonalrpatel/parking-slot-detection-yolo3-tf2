@@ -14,6 +14,10 @@ from utils.callbacks import ExponentDecayScheduler, LossHistory, ModelCheckpoint
 from utils.dataloader import YoloDatasets
 from utils.utils import get_anchors, get_classes
 
+gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
+
 # seed_value = 121
 # random.seed(seed_value)
 # tf.random.set_seed(seed_value)
@@ -84,8 +88,8 @@ if __name__ == "__main__":
     #   占用的显存较小，仅对网络进行微调
     #----------------------------------------------------#
     Init_Epoch          = 0
-    Freeze_Epoch        = 25
-    Freeze_batch_size   = 16
+    Freeze_Epoch        = 30
+    Freeze_batch_size   = 32
     Freeze_lr           = 1e-3
     #----------------------------------------------------#
     #   解冻阶段训练参数
@@ -93,7 +97,7 @@ if __name__ == "__main__":
     #   占用的显存较大，网络所有的参数都会发生改变
     #----------------------------------------------------#
     UnFreeze_Epoch      = 50
-    Unfreeze_batch_size = 8
+    Unfreeze_batch_size = 16
     Unfreeze_lr         = 1e-4
     #------------------------------------------------------#
     #   是否进行冻结训练，默认先冻结主干训练后解冻训练。
@@ -112,7 +116,6 @@ if __name__ == "__main__":
     #----------------------------------------------------#
     train_annotation_path   = 'model_data/train_annotations.txt'
     train_data_path         = 'model_data/ps/train/'
-    # val_annotation_path     = '2007_val.txt'
     val_split               = 0.2
     #----------------------------------------------------#
     #   获取classes和anchor

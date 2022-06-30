@@ -144,4 +144,3 @@ if __name__ == '__main__':
     }
     args = AccessDictByDot.load(dictionary)
     _main(args)
-	
