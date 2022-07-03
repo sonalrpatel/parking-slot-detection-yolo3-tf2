@@ -126,7 +126,7 @@ if __name__ == "__main__":
     #----------------------------------------------------#
     #   model log path
     #----------------------------------------------------#
-    log_path = 'logs/'
+    log_path = '/content/drive/MyDrive/10_Python/22_Parking_spot_detection/'
     if not os.path.exists(log_path):
         os.makedirs(log_path)
     #------------------------------------------------------#
