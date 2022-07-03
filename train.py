@@ -212,8 +212,8 @@ if __name__ == "__main__":
 
         model.compile(optimizer=Adam(lr = lr), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
 
-        model.fit_generator(
-            generator           = train_dataloader,
+        model.fit(
+            train_dataloader,
             steps_per_epoch     = epoch_step,
             validation_data     = val_dataloader,
             validation_steps    = epoch_step_val,
@@ -249,8 +249,8 @@ if __name__ == "__main__":
 
         model.compile(optimizer=Adam(lr = lr), loss={'yolo_loss': lambda y_true, y_pred: y_pred})
 
-        model.fit_generator(
-            generator           = train_dataloader,
+        model.fit(
+            train_dataloader,
             steps_per_epoch     = epoch_step,
             validation_data     = val_dataloader,
             validation_steps    = epoch_step_val,
