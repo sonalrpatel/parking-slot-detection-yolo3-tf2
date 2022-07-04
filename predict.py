@@ -17,7 +17,7 @@ for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
 def _main(args):
-    yolo = YOLO()
+    yolo = YOLO(args)
     #----------------------------------------------------------------------------------------------------------#
     #   mode用于指定测试的模式：
     #   'predict'表示单张图片预测，如果想对预测过程进行修改，如保存图片，截取对象等，可以先看下方详细的注释
@@ -91,13 +91,13 @@ def _main(args):
             frame = np.array(yolo.detect_image(frame))
             # RGBtoBGR满足opencv显示格式
             frame = cv2.cvtColor(frame,cv2.COLOR_RGB2BGR)
-            
+
             fps  = ( fps + (1./(time.time()-t1)) ) / 2
             print("fps= %.2f"%(fps))
             frame = cv2.putText(frame, "fps= %.2f"%(fps), (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            
+
             cv2.imshow("video",frame)
-            c= cv2.waitKey(1) & 0xff 
+            c= cv2.waitKey(1) & 0xff
             if video_save_path!="":
                 out.write(frame)
 
@@ -120,7 +120,7 @@ def _main(args):
     elif mode == "dir_predict":
         import os
         from tqdm import tqdm
-        
+
         img_names = os.listdir(dir_origin_path)
         for img_name in tqdm(img_names):
             if img_name.lower().endswith(('.bmp', '.dib', '.png', '.jpg', '.jpeg', '.pbm', '.pgm', '.ppm', '.tif', '.tiff')):
@@ -130,16 +130,17 @@ def _main(args):
                 if not os.path.exists(dir_save_path):
                     os.makedirs(dir_save_path)
                 r_image.save(os.path.join(dir_save_path, img_name))
-                
+
     else:
         raise AssertionError("Please specify the correct mode: 'predict', 'video', 'fps' or 'dir_predict'.")
 
 
 if __name__ == '__main__':
     dictionary = {
-        'weight_path': "model_data/trained_weights_stage_1.h5",
+        'weight_path': "G:/My Drive/10_Python/22_Parking_spot_detection/psd-yolo3tf2/ep020-loss11.630-val_loss12.243.h5",
+        # 'weight_path': "C:/Users/sonal/Downloads/ep010-loss13.236-val_loss13.121.h5",
         'classes_path': "model_data/ps_classes.txt",
-        'image_path': "data/demo/train/20160725-7-331.jpg"
+        'image_path': "data/demo/train/20160725-3-1.jpg"
     }
     args = AccessDictByDot.load(dictionary)
     _main(args)
